@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+	<style>
+		canvas {
+			border:1px solid #d3d3d3;
+			background-color: #f1f1f1;
+		}
+	</style>
+</head>
+<body onload="arrancaJuego()">
+	<script>
+
+		var anchoLienzo = 480;
+		var altoLienzo = 270;
+		var anchoProta = 20;
+		var altoProta = 30;
+		var anchoObstaculo=10;
+		var altoObstaculo=20;
+		var listaObstaculos=[];
+		var puntos = 0;
+		var cuentaTiempo=0;
+		var limiteCuenta=150;//tiempo entre apariciones de obstaculos
+		
+		var etiqCoord;
+		var prota;
+
+		function dentroMapa(x1,y1,anc,alt){
+			if(x1<0 || x1>(anchoLienzo-anc)){
+				return false;
+			}
+			if(y1<0 || y1>(altoLienzo-alt)){
+				return false;
+			}
+			return true;
+		}
+
+		function arrancaJuego() {
+			prota = new componente(anchoProta, altoProta, "red", 10, 120);//posicion inicial 10x 120y
+			mapa.comienza();
+		}
+
+		var mapa = {
+			contexto : null,
+			lienzo : document.createElement("canvas"),
+			comienza : function() {
+				etiqCoord = document.getElementById("idEtiqCoordenadas");
+				this.lienzo.width = anchoLienzo;
+				this.lienzo.height = altoLienzo;
+				this.contexto = this.lienzo.getContext("2d");				
+				document.body.insertBefore(this.lienzo, document.body.childNodes[0]);
+				this.temporizador = setInterval(actualizaMapa, 20);
+			},
+			limpia : function() {
+				this.contexto.clearRect(0, 0, this.lienzo.width, this.lienzo.height);
+			},
+			para : function() {
+				clearInterval(this.temporizador);
+			}
+		}
+
+		function componente(anchoComp, altoComp, col, x, y) {
+			this.colisionesBordeMapa = 0;
+			this.color = col;
+			this.ancho = anchoComp;
+			this.alto = altoComp;
+			this.velocidadX = 0;
+			this.velocidadY = 0;
+			this.x = x;
+			this.y = y;    
+			this.actualiza = function() {
+				contexto1 = mapa.contexto;
+				contexto1.fillStyle = this.color;
+				contexto1.fillRect(this.x, this.y, this.ancho, this.alto);
+			}
+			this.nuevaPosicion = function() {   						
+				var xantes = this.x;
+				var yantes = this.y;
+				this.x += this.velocidadX;
+				this.y += this.velocidadY;  
+				if(dentroMapa(this.x,this.y,anchoComp,altoComp)){
+					//colisionesBordeMapa++;
+				}  		
+				else{		
+					this.colisionesBordeMapa++;
+					this.x=xantes;
+					this.y=yantes;
+				}
+			}    
+			this.colisionaCon = function(componente2) {
+				var ladoIzq = this.x;
+				var ladoDer = this.x + (this.ancho);
+				var ladoSuperior = this.y;
+				var ladoInferior = this.y + (this.alto);
+				var ladoIzq2 = componente2.x;
+				var ladoDer2 = componente2.x + (componente2.ancho);
+				var ladoSuperior2 = componente2.y;
+				var ladoInferior2 = componente2.y + (componente2.alto);
+				var colision = true;
+				if ((ladoInferior < ladoSuperior2) ||
+					   (ladoSuperior > ladoInferior2) ||
+					   (ladoDer < ladoIzq2) ||
+					   (ladoIzq > ladoDer2)) {
+				   colision = false;
+				}
+				return colision;
+			}
+		}
+		
+		function creaObstaculo(){
+			var xObs, yObs;
+			if (cuentaTiempo==0) {
+				xObs = mapa.lienzo.width - anchoObstaculo;
+				yObs = (mapa.lienzo.height-altoObstaculo)*Math.random();
+				var obstaculo = new componente(anchoObstaculo, altoObstaculo, "green", xObs, yObs);
+				obstaculo.velocidadX=-1;
+				listaObstaculos.push(obstaculo);
+			}
+		}
+
+		function actualizaMapa() {
+			mapa.limpia();			
+			creaObstaculo();
+			var nuevaLista = [];
+			var i;
+			for (i = 0; i < listaObstaculos.length; i += 1) {
+				listaObstaculos[i].nuevaPosicion();
+				listaObstaculos[i].actualiza();
+				if(listaObstaculos[i].colisionesBordeMapa==0){
+					nuevaLista.push(listaObstaculos[i]);
+				}
+				if(listaObstaculos[i].colisionaCon(prota)){
+					mapa.para();
+				}
+			}			
+			listaObstaculos=nuevaLista;
+			
+			prota.nuevaPosicion();  
+			etiqCoord.innerHTML="Puntos: "+puntos;
+			prota.actualiza();
+			cuentaTiempo=(cuentaTiempo+1)%parseInt(limiteCuenta);			
+			puntos++;
+			if(puntos%1000==0){
+				limiteCuenta=limiteCuenta*0.3;
+				if(limiteCuenta<1)limiteCuenta=1;
+			}
+		}
+		
+		function pararProta(){
+			prota.velocidadY = 0;
+			prota.velocidadX = 0;
+		}
+
+		function moverArriba() {
+			prota.velocidadY -= 1; 
+		}
+
+		function moverAbajo() {
+			prota.velocidadY += 1; 
+		}
+
+		function moverIzq() {
+			prota.velocidadX -= 1; 
+		}
+
+		function moverDer() {
+			prota.velocidadX += 1; 
+		}
+	</script>
+	<div style="text-align:center;width:480px;">
+	  <button onmousedown="moverArriba()" onmouseup="pararProta()">ARRIBA</button><br><br>
+	  <button onmousedown="moverIzq()" onmouseup="pararProta()">IZQ</button>
+	  <button onmousedown="moverDer()" onmouseup="pararProta()">DER</button><br><br>
+	  <button onmousedown="moverAbajo()" onmouseup="pararProta()">ABAJO</button>
+	</div>
+	<div>
+		<p id="idEtiqCoordenadas"></p>
+	</div>
+
+</body>
+</html>
